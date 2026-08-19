@@ -1,4 +1,4 @@
-import os
+﻿import os
 import random
 from duckduckgo_search import DDGS
 from openai import OpenAI
@@ -17,13 +17,15 @@ def search_news():
     ]
     query = random.choice(queries)
     
-    with DDGS() as ddgs:
-        results = [r for r in ddgs.text(query, max_results=3)]
-        
-    if not results:
-        return {"title": "Изменения в законах о долгах", "snippet": "Законодательство в сфере банкротства постоянно обновляется.", "href": "https://fssp.gov.ru"}
-    
-    return random.choice(results)
+    try:
+        with DDGS() as ddgs:
+            results = [r for r in ddgs.text(query, max_results=3)]
+        if not results:
+            return {"title": "Изменения в законах о долгах", "snippet": "Законодательство в сфере банкротства постоянно обновляется, следите за новостями.", "href": "https://fssp.gov.ru"}
+        return random.choice(results)
+    except Exception as e:
+        print(f"Ошибка поиска DuckDuckGo: {e}")
+        return {"title": "Важные новости о списании долгов", "snippet": "Следите за обновлениями в законодательстве РФ.", "href": "https://fssp.gov.ru"}
 
 def generate_post():
     news = search_news()
@@ -40,17 +42,20 @@ def generate_post():
     
     Правила:
     1. Объясни простыми словами, как это помогает должнику.
-    2. Используй эмодзи для структуры.
-    3. В конце обязательно добавь призыв: "Узнайте, подходит ли вам списание долга. Заполните бесплатную анкету за 1 минуту:"
+    2. Используй эмодзи для структуры (но не переборщи).
+    3. В конце обязательно добавь призыв: "Узнайте, подходит ли вам списание долгов. Заполните бесплатную анкету за 1 минуту:"
     4. Сразу после призыва добавь ссылку на анкету: {AFFILIATE_LINK}
     5. В самом низу добавь строку: "Источник: {news['href']}"
     
     Не используй символы # и *, пиши обычным текстом с эмодзи.
     """
     
-    response = client.chat.completions.create(
-        model="grok-2-latest", 
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="grok-2-latest", 
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"❌ Ошибка генерации поста через Grok: {e}"
