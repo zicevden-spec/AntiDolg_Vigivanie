@@ -1,0 +1,32 @@
+name: Auto-post to Telegram
+
+on:
+  schedule:
+    # Запускать каждый день в 09:00 и 15:00 UTC (12:00 и 18:00 МСК)
+    - cron: '0 9,15 * * *'
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run autoposter
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          AFFILIATE_LINK: ${{ secrets.AFFILIATE_LINK }}
+        run: python main.py
