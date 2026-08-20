@@ -71,9 +71,9 @@ def generate_post():
     
     try:
         response = client.chat.completions.create(
-            model="grok-2-latest",
+            model="grok-3-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7
+            temperature=0.7, max_tokens=600
         )
         return response.choices[0].message.content
     except Exception as e:
