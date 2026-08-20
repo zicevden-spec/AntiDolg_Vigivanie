@@ -1,3 +1,4 @@
+п»ї# -*- coding: utf-8 -*-
 import os
 import asyncio
 from telegram import Bot
@@ -11,24 +12,24 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 async def main():
     if not BOT_TOKEN or not CHANNEL_ID:
-        print("? Ошибка: Проверьте переменные окружения")
+        print("РћС€РёР±РєР°: РџСЂРѕРІРµСЂСЊС‚Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РѕРєСЂСѓР¶РµРЅРёСЏ")
         return
     
     bot = Bot(token=BOT_TOKEN)
     
-    print("?? Grok генерирует пост...")
+    print("Grok РіРµРЅРµСЂРёСЂСѓРµС‚ РїРѕСЃС‚...")
     post_text = generate_post()
     
-    print("?? Отправляем в Telegram канал...")
+    print("РћС‚РїСЂР°РІР»СЏРµРј РІ Telegram РєР°РЅР°Р»...")
     try:
         await bot.send_message(
             chat_id=CHANNEL_ID,
             text=post_text,
             parse_mode='Markdown'
         )
-        print("? Пост успешно опубликован!")
+        print("РџРѕСЃС‚ СѓСЃРїРµС€РЅРѕ РѕРїСѓР±Р»РёРєРѕРІР°РЅ!")
     except Exception as e:
-        print(f"? Ошибка при отправке: {e}")
+        print(f"РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
