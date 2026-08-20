@@ -15,10 +15,10 @@ def get_latest_news():
         feed = feedparser.parse(rss_url)
         if feed.entries:
             latest = feed.entries[0]
-            return f"Новое сообщение о банкротстве\n\n{latest.title}\n\nПодробнее: {latest.link}"
+            return "Novoe soobschenie o bankrotstve: " + latest.title + " " + latest.link
     except Exception as e:
         print(f"RSS error: {e}")
-    return "Тестовое сообщение\n\nБот успешно подключен и готов к работе! Скоро здесь появятся актуальные новости о банкротстве."
+    return "Test message. Bot is ready."
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
