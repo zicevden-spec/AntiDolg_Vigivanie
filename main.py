@@ -1,35 +1,32 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import os
-import asyncio
-from telegram import Bot
+import requests
+import feedparser
 from dotenv import load_dotenv
-from generator import generate_post
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
-async def main():
-    if not BOT_TOKEN or not CHANNEL_ID:
-        print("Ошибка: Проверьте переменные окружения")
-        return
-    
-    bot = Bot(token=BOT_TOKEN)
-    
-    print("Grok генерирует пост...")
-    post_text = generate_post()
-    
-    print("Отправляем в Telegram канал...")
+def get_latest_news():
+    rss_url = "https://fedresurs.ru/Rss.aspx"
     try:
-        await bot.send_message(
-            chat_id=CHANNEL_ID,
-            text=post_text,
-            parse_mode='Markdown'
-        )
-        print("Пост успешно опубликован!")
+        feed = feedparser.parse(rss_url)
+        if feed.entries:
+            latest = feed.entries[0]
+            return f"Новое сообщение о банкротстве\n\n{latest.title}\n\nПодробнее: {latest.link}"
     except Exception as e:
-        print(f"Ошибка при отправке: {e}")
+        print(f"RSS error: {e}")
+    return "Тестовое сообщение\n\nБот успешно подключен и готов к работе! Скоро здесь появятся актуальные новости о банкротстве."
+
+def send_message(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": CHANNEL_ID, "text": text}
+    response = requests.post(url, json=payload, timeout=30)
+    response.raise_for_status()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    news_text = get_latest_news()
+    send_message(news_text)
+    print("Post published!")
