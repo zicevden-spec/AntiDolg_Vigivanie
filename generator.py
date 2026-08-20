@@ -1,6 +1,7 @@
-п»їimport os
+import os
 import random
-from duckduckgo_search import DDGS
+import requests
+from bs4 import BeautifulSoup
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -10,24 +11,45 @@ GROK_API_KEY = os.getenv("GROK_API_KEY")
 AFFILIATE_LINK = os.getenv("AFFILIATE_LINK")
 
 def search_news():
+    """Ищет новости через DuckDuckGo HTML (без компиляции)"""
     queries = [
-        "СЃРїРёСЃР°РЅРёРµ РґРѕР»РіРѕРІ С„РёР·Р»РёС† 2025 2026 РЅРѕРІРѕСЃС‚Рё Р РѕСЃСЃРёСЏ",
-        "Р±Р°РЅРєСЂРѕС‚СЃС‚РІРѕ С‡РµСЂРµР· РњР¤Р¦ РёР·РјРµРЅРµРЅРёСЏ Р·Р°РєРѕРЅ",
-        "РїСЂР°РІР° РґРѕР»Р¶РЅРёРєРѕРІ РєРѕР»Р»РµРєС‚РѕСЂС‹ С„Р·-230 РЅРѕРІС‹Рµ РїРѕРїСЂР°РІРєРё"
+        "списание долгов физлиц 2025 2026 новости Россия",
+        "банкротство через МФЦ изменения закон",
+        "права должников коллекторы фз-230 новые поправки"
     ]
     query = random.choice(queries)
     
     try:
-        with DDGS() as ddgs:
-            results = [r for r in ddgs.text(query, max_results=3)]
-        if not results:
-            return {"title": "РР·РјРµРЅРµРЅРёСЏ РІ Р·Р°РєРѕРЅР°С… Рѕ РґРѕР»РіР°С…", "snippet": "Р—Р°РєРѕРЅРѕРґР°С‚РµР»СЊСЃС‚РІРѕ РІ СЃС„РµСЂРµ Р±Р°РЅРєСЂРѕС‚СЃС‚РІР° РїРѕСЃС‚РѕСЏРЅРЅРѕ РѕР±РЅРѕРІР»СЏРµС‚СЃСЏ, СЃР»РµРґРёС‚Рµ Р·Р° РЅРѕРІРѕСЃС‚СЏРјРё.", "href": "https://fssp.gov.ru"}
-        return random.choice(results)
+        # Простой поиск через DuckDuckGo HTML
+        url = f"https://html.duckduckgo.com/html/?q={query}"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        results = soup.find_all('div', class_='result__body')
+        
+        if results:
+            result = random.choice(results[:3])
+            title = result.find('a', class_='result__snippet')
+            link = result.find('a', class_='result__url')
+            
+            return {
+                "title": title.text.strip() if title else "Новые правила по долгам",
+                "snippet": title.text.strip() if title else "Законодательство обновляется",
+                "href": link.get('href') if link else "https://fssp.gov.ru"
+            }
     except Exception as e:
-        print(f"РћС€РёР±РєР° РїРѕРёСЃРєР° DuckDuckGo: {e}")
-        return {"title": "Р’Р°Р¶РЅС‹Рµ РЅРѕРІРѕСЃС‚Рё Рѕ СЃРїРёСЃР°РЅРёРё РґРѕР»РіРѕРІ", "snippet": "РЎР»РµРґРёС‚Рµ Р·Р° РѕР±РЅРѕРІР»РµРЅРёСЏРјРё РІ Р·Р°РєРѕРЅРѕРґР°С‚РµР»СЊСЃС‚РІРµ Р Р¤.", "href": "https://fssp.gov.ru"}
+        print(f"Ошибка поиска: {e}")
+    
+    # Fallback если поиск не сработал
+    return {
+        "title": "Важные изменения в законах о долгах",
+        "snippet": "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.",
+        "href": "https://fssp.gov.ru"
+    }
 
 def generate_post():
+    """Генерирует пост через Grok"""
     news = search_news()
     
     client = OpenAI(
@@ -35,27 +57,28 @@ def generate_post():
         base_url="https://api.x.ai/v1"
     )
     
-    prompt = f"""РўС‹ вЂ” РѕРїС‹С‚РЅС‹Р№ СЋСЂРёСЃС‚ РїРѕ СЃРїРёСЃР°РЅРёСЋ РґРѕР»РіРѕРІ Рё Р°РІС‚РѕСЂ Telegram-РєР°РЅР°Р»Р°. 
-    РќР°РїРёС€Рё РєРѕСЂРѕС‚РєРёР№, РїРѕР»РµР·РЅС‹Р№ Рё С†РµРїР»СЏСЋС‰РёР№ РїРѕСЃС‚ (РґРѕ 1200 Р·РЅР°РєРѕРІ) РЅР° РѕСЃРЅРѕРІРµ СЌС‚РѕР№ РЅРѕРІРѕСЃС‚Рё:
-    Р—Р°РіРѕР»РѕРІРѕРє: {news['title']}
-    РЎСѓС‚СЊ: {news['snippet']}
+    prompt = f"""Ты — опытный юрист по списанию долгов и автор Telegram-канала. 
+    Напиши короткий, полезный и цепляющий пост (до 1200 знаков) на основе этой новости:
+    Заголовок: {news['title']}
+    Суть: {news['snippet']}
     
-    РџСЂР°РІРёР»Р°:
-    1. РћР±СЉСЏСЃРЅРё РїСЂРѕСЃС‚С‹РјРё СЃР»РѕРІР°РјРё, РєР°Рє СЌС‚Рѕ РїРѕРјРѕРіР°РµС‚ РґРѕР»Р¶РЅРёРєСѓ.
-    2. РСЃРїРѕР»СЊР·СѓР№ СЌРјРѕРґР·Рё РґР»СЏ СЃС‚СЂСѓРєС‚СѓСЂС‹ (РЅРѕ РЅРµ РїРµСЂРµР±РѕСЂС‰Рё).
-    3. Р’ РєРѕРЅС†Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ РґРѕР±Р°РІСЊ РїСЂРёР·С‹РІ: "РЈР·РЅР°Р№С‚Рµ, РїРѕРґС…РѕРґРёС‚ Р»Рё РІР°Рј СЃРїРёСЃР°РЅРёРµ РґРѕР»РіРѕРІ. Р—Р°РїРѕР»РЅРёС‚Рµ Р±РµСЃРїР»Р°С‚РЅСѓСЋ Р°РЅРєРµС‚Сѓ Р·Р° 1 РјРёРЅСѓС‚Сѓ:"
-    4. РЎСЂР°Р·Сѓ РїРѕСЃР»Рµ РїСЂРёР·С‹РІР° РґРѕР±Р°РІСЊ СЃСЃС‹Р»РєСѓ РЅР° Р°РЅРєРµС‚Сѓ: {AFFILIATE_LINK}
-    5. Р’ СЃР°РјРѕРј РЅРёР·Сѓ РґРѕР±Р°РІСЊ СЃС‚СЂРѕРєСѓ: "РСЃС‚РѕС‡РЅРёРє: {news['href']}"
+    Правила:
+    1. Объясни простыми словами, как это помогает должнику.
+    2. Используй эмодзи для структуры.
+    3. В конце обязательно добавь призыв: "Узнайте, подходит ли вам списание долга. Заполните бесплатную анкету за 1 минуту:"
+    4. Сразу после призыва добавь ссылку на анкету: {AFFILIATE_LINK}
+    5. В самом низу добавь строку: "Источник: {news['href']}"
     
-    РќРµ РёСЃРїРѕР»СЊР·СѓР№ СЃРёРјРІРѕР»С‹ # Рё *, РїРёС€Рё РѕР±С‹С‡РЅС‹Рј С‚РµРєСЃС‚РѕРј СЃ СЌРјРѕРґР·Рё.
+    Не используй символы # и *, пиши обычным текстом с эмодзи.
     """
     
     try:
         response = client.chat.completions.create(
-            model="grok-2-latest", 
+            model="grok-2-latest",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"вќЊ РћС€РёР±РєР° РіРµРЅРµСЂР°С†РёРё РїРѕСЃС‚Р° С‡РµСЂРµР· Grok: {e}"
+        print(f"Ошибка генерации: {e}")
+        return f"?? Важная информация о долгах\n\n{news['snippet']}\n\n?? Узнайте, подходит ли вам списание долга:\n{AFFILIATE_LINK}\n\n?? Источник: {news['href']}"
