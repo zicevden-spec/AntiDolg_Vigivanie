@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import random
-import requests
+import re
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -20,11 +20,13 @@ TOPICS = [
 ]
 
 WORKING_MODELS = [
-    "qwen/qwen3.6-27b",
     "openai/gpt-oss-120b",
     "groq/compound",
-    "allam-2-7b",
+    "qwen/qwen3.6-27b",
 ]
+
+def clean_thinking(text):
+    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
 
 def generate_post():
     topic = random.choice(TOPICS)
@@ -41,6 +43,7 @@ def generate_post():
         f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
         f"🤝 [Хочу стать агентом]({AGENT_LINK})\n"
         "4. После этих трёх строк НИЧЕГО больше не пиши.\n"
+        "5. НЕ показывай процесс рассуждения, только финальный пост.\n"
     )
 
     for model in WORKING_MODELS:
@@ -49,9 +52,9 @@ def generate_post():
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
-                max_tokens=500,
+                max_tokens=1000,
             )
-            text = response.choices[0].message.content
+            text = clean_thinking(response.choices[0].message.content)
             print(f"Groq answer ({model}): {text[:100]}...")
             return text
         except Exception as e:
