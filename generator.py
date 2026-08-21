@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROK_API_KEY")
+OPENROUTER_API_KEY = os.getenv("GROK_API_KEY")
 AFFILIATE_LINK = os.getenv("AFFILIATE_LINK")
 DEBT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/client/76b604d7-85ee-478a-8089-124d37fa6746"
 AGENT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/agent/76b604d7-85ee-478a-8089-124d37fa6746"
@@ -19,14 +19,17 @@ TOPICS = [
 ]
 
 MODELS = [
-    "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile",
-    "gemma2-9b-it",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "mistralai/mistral-7b-instruct:free",
 ]
 
 def generate_post():
     topic = random.choice(TOPICS)
-    client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+    client = OpenAI(
+        api_key=OPENROUTER_API_KEY,
+        base_url="https://openrouter.ai/api/v1"
+    )
 
     prompt = (
         "Ты юрист по списанию долгов и автор Telegram-канала. "
@@ -50,7 +53,7 @@ def generate_post():
                 max_tokens=600,
             )
             text = response.choices[0].message.content
-            print(f"Groq answer ({model}): {text[:100]}...")
+            print(f"OpenRouter answer ({model}): {text[:100]}...")
             return text
         except Exception as e:
             print(f"Model {model} failed: {e}")
