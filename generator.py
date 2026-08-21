@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("GROK_API_KEY")
+GEMINI_API_KEY = os.getenv("GROK_API_KEY")
 AFFILIATE_LINK = os.getenv("AFFILIATE_LINK")
 DEBT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/client/76b604d7-85ee-478a-8089-124d37fa6746"
 AGENT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/agent/76b604d7-85ee-478a-8089-124d37fa6746"
@@ -18,23 +18,11 @@ TOPICS = [
     "что не могут забрать коллекторы у должника",
 ]
 
-MODELS = [
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "google/gemma-2-9b-it:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "microsoft/phi-3-mini-128k-instruct:free",
-    "nousresearch/hermes-3-llama-3.1-405b:free",
-]
-
 def generate_post():
     topic = random.choice(TOPICS)
     client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
-        default_headers={
-            "HTTP-Referer": "https://github.com/zicevden-spec/AntiDolg_Vigivanie",
-            "X-Title": "AntiDolg Bot"
-        }
+        api_key=GEMINI_API_KEY,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
     )
 
     prompt = (
@@ -50,24 +38,22 @@ def generate_post():
         "4. После этих трёх строк НИЧЕГО больше не пиши.\n"
     )
 
-    for model in MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=600,
-            )
-            text = response.choices[0].message.content
-            print(f"OpenRouter answer ({model}): {text[:100]}...")
-            return text
-        except Exception as e:
-            print(f"Model {model} failed: {e}")
-
-    return (
-        "💡 Важная информация о долгах\n\n"
-        "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.\n\n"
-        f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
-        f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
-        f"🤝 [Хочу стать агентом]({AGENT_LINK})"
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gemini-2.0-flash",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=600,
+        )
+        text = response.choices[0].message.content
+        print(f"Gemini answer: {text[:100]}...")
+        return text
+    except Exception as e:
+        print(f"Ошибка генерации: {e}")
+        return (
+            "💡 Важная информация о долгах\n\n"
+            "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.\n\n"
+            f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
+            f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
+            f"🤝 [Хочу стать агентом]({AGENT_LINK})"
+        )
