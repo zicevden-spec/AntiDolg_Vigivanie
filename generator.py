@@ -18,6 +18,12 @@ TOPICS = [
     "что не могут забрать коллекторы у должника",
 ]
 
+MODELS = [
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+    "gemma2-9b-it",
+]
+
 def generate_post():
     topic = random.choice(TOPICS)
     client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
@@ -35,22 +41,24 @@ def generate_post():
         "4. После этих трёх строк НИЧЕГО больше не пиши.\n"
     )
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=600,
-        )
-        text = response.choices[0].message.content
-        print(f"Groq answer: {text[:200]}...")
-        return text
-    except Exception as e:
-        print(f"Ошибка генерации: {e}")
-        return (
-            "💡 Важная информация о долгах\n\n"
-            "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.\n\n"
-            f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
-            f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
-            f"🤝 [Хочу стать агентом]({AGENT_LINK})"
-        )
+    for model in MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=600,
+            )
+            text = response.choices[0].message.content
+            print(f"Groq answer ({model}): {text[:100]}...")
+            return text
+        except Exception as e:
+            print(f"Model {model} failed: {e}")
+
+    return (
+        "💡 Важная информация о долгах\n\n"
+        "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.\n\n"
+        f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
+        f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
+        f"🤝 [Хочу стать агентом]({AGENT_LINK})"
+    )
