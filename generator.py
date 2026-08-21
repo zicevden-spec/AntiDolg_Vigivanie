@@ -11,6 +11,7 @@ load_dotenv()
 
 API_KEY = os.getenv("GROK_API_KEY")
 AFFILIATE_LINK = os.getenv("AFFILIATE_LINK")
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 DEBT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/client/76b604d7-85ee-478a-8089-124d37fa6746"
 AGENT_LINK = "https://xn--j1ab.xn--90a1bg.xn--p1ai/invite/agent/76b604d7-85ee-478a-8089-124d37fa6746"
 
@@ -38,6 +39,15 @@ TYPE_INSTRUCTIONS = {
     "новость": "Напиши пост на основе предоставленной новости",
 }
 
+IMAGE_QUERIES = {
+    "списание долгов через банкротство физлиц": "money documents law",
+    "права должников при звонках коллекторов": "phone stress",
+    "банкротство через МФЦ без суда": "office documents service",
+    "что не могут забрать коллекторы у должника": "family home protection",
+    "арест зарплаты судебными приставами": "salary bank card",
+    "кредитные каникулы и реструктуризация": "bank credit contract",
+}
+
 def fetch_news():
     queries = ["банкротство физлиц", "списание долгов", "коллекторы закон права"]
     query = random.choice(queries)
@@ -58,6 +68,27 @@ def fetch_news():
 
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+def generate_image_url(topic):
+    query = IMAGE_QUERIES.get(topic, "money finance law")
+    if PEXELS_API_KEY:
+        try:
+            r = requests.get(
+                "https://api.pexels.com/v1/search",
+                headers={"Authorization": PEXELS_API_KEY},
+                params={"query": query, "per_page": 10},
+                timeout=15,
+            )
+            photos = r.json().get("photos", [])
+            if photos:
+                url = random.choice(photos)["src"]["large"]
+                print(f"Image from Pexels: {url}")
+                return url
+        except Exception as e:
+            print(f"Pexels error: {e}")
+    keywords = query.replace(" ", ",")
+    print(f"Image from LoremFlickr: {keywords}")
+    return f"https://loremflickr.com/1024/640/{keywords}"
 
 def generate_post():
     content_type = random.choice(CONTENT_TYPES)
@@ -110,7 +141,3 @@ def generate_post():
         f"🤝 [Хочу стать агентом]({AGENT_LINK})"
     )
     return fallback, topic
-
-def generate_image_url(topic):
-    p = f"clean professional illustration about {topic}, finance and law, calm colors, no text"
-    return "https://image.pollinations.ai/prompt/" + requests.utils.quote(p) + "?width=1024&height=640&nologo=true"

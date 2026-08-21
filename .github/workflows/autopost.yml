@@ -23,4 +23,5 @@ jobs:
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           AFFILIATE_LINK: ${{ secrets.AFFILIATE_LINK }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: python main.py
