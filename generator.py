@@ -2,6 +2,7 @@
 import os
 import random
 import re
+import datetime
 import requests
 import xml.etree.ElementTree as ET
 from openai import OpenAI
@@ -22,9 +23,43 @@ TOPICS = [
     "что не могут забрать коллекторы у должника",
     "арест зарплаты судебными приставами",
     "кредитные каникулы и реструктуризация",
+    "мифы о банкротстве: что правда, а что нет",
+    "что происходит с квартирой и машиной при банкротстве",
+    "единственное жильё при банкротстве: как закон его защищает",
+    "банкротство и семья: влияет ли процедура на близких",
+    "статистика банкротств физлиц в России",
+    "как общаться с банками после банкротства",
+    "жизнь после банкротства: чистый старт",
+    "процедура банкротства пошагово",
+    "сколько реально стоит банкротство",
+    "банкротство пенсионеров: особенности",
+    "банкротство самозанятых и ИП",
+    "разница между банкротством через МФЦ и через суд",
+    "когда банкротство НЕ нужно",
+    "какие долги списываются, а какие нет",
+    "можно ли выезжать за границу при банкротстве",
+    "банкротство и алименты",
+    "что происходит с ипотекой при банкротстве",
+    "влияет ли банкротство на трудоустройство",
+    "как выбрать юриста по банкротству и не попасть на мошенников",
+    "мошенники в банкротстве: как распознать",
+    "кто такой финансовый управляющий и какова его роль",
+    "сколько по времени длится банкротство",
+    "какие документы нужны для банкротства",
+    "банкротство супругов и раздел имущества",
+    "списываются ли долги по ЖКХ",
+    "долги по распискам обычным людям и банкротство",
+    "налоговые долги и банкротство",
+    "штрафы ГИБДД и банкротство",
+    "микрозаймы: как выбраться из долговой спирали",
+    "поручительство по кредиту: чем рискует поручитель",
+    "срок исковой давности по долгам",
+    "кредитная история после банкротства",
+    "где получить бесплатную юридическую помощь должнику",
+    "передают ли долги по наследству",
 ]
 
-CONTENT_TYPES = ["советы", "история", "объяснение", "новость"]
+CONTENT_TYPES = ["советы", "история", "объяснение", "новость", "статистика", "разбор мифа", "поддержка"]
 
 WORKING_MODELS = [
     "openai/gpt-oss-120b",
@@ -34,22 +69,63 @@ WORKING_MODELS = [
 
 TYPE_INSTRUCTIONS = {
     "советы": "Напиши 3-5 практических советов",
-    "история": "Напиши короткую историю человека, который законно избавился от долгов",
+    "история": "Напиши короткую историю человека, который законно избавился от долгов и начал жизнь заново",
     "объяснение": "Объясни простыми словами один юридический термин или механизм",
     "новость": "Напиши пост на основе предоставленной новости",
+    "статистика": "Напиши пост с цифрами и фактами о банкротстве физлиц в России",
+    "разбор мифа": "Напиши в формате: МИФ (популярный страх) и РЕАЛЬНОСТЬ (как на самом деле по закону)",
+    "поддержка": "Напиши спокойный поддерживающий пост, который снимает тревогу и даёт уверенность",
 }
 
-IMAGE_QUERIES = {
-    "списание долгов через банкротство физлиц": "money documents law",
-    "права должников при звонках коллекторов": "phone stress",
-    "банкротство через МФЦ без суда": "office documents service",
-    "что не могут забрать коллекторы у должника": "family home protection",
-    "арест зарплаты судебными приставами": "salary bank card",
-    "кредитные каникулы и реструктуризация": "bank credit contract",
-}
+HOURS_MAP = {6: 0, 9: 1, 12: 2, 15: 3}
+
+def get_scheduled_combo():
+    now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
+    year, week, _ = now.isocalendar()
+    day = now.weekday()
+    hour_index = HOURS_MAP.get(now.hour, 0)
+    global_index = day * 4 + hour_index
+
+    combos = [(t, c) for t in TOPICS for c in CONTENT_TYPES]
+    rng = random.Random(year * 100 + week)
+    rng.shuffle(combos)
+    return combos[global_index % len(combos)]
+
+def image_query_for(topic):
+    mapping = [
+        ("коллектор", "phone stress"),
+        ("МФЦ", "office documents service"),
+        ("зарплат", "salary bank card"),
+        ("квартир", "apartment home"),
+        ("машиной", "car"),
+        ("пенсионер", "pensioner family"),
+        ("самозанят", "small business"),
+        ("статистика", "chart statistics data"),
+        ("миф", "law justice truth"),
+        ("семья", "family support calm"),
+        ("супруг", "couple marriage"),
+        ("жизнь после", "freedom new start"),
+        ("пошагово", "steps plan checklist"),
+        ("документ", "papers documents"),
+        ("стоит", "money calculator"),
+        ("каникулы", "bank credit calendar"),
+        ("микрозайм", "cash loan trap"),
+        ("наследств", "inheritance family"),
+        ("юрист", "lawyer office consultation"),
+        ("мошенник", "fraud warning"),
+        ("ипотек", "mortgage house"),
+        ("алимент", "family children"),
+        ("штраф", "traffic fine car"),
+        ("ЖКХ", "utilities home"),
+        ("кредитная история", "credit report"),
+    ]
+    for key, q in mapping:
+        if key in topic:
+            return q
+    return "money finance law calm"
 
 def fetch_news():
-    queries = ["банкротство физлиц", "списание долгов", "коллекторы закон права"]
+    queries = ["банкротство физлиц", "списание долгов", "коллекторы закон права", "банкротство статистика"]
     query = random.choice(queries)
     url = f"https://news.google.com/rss/search?q={query}&hl=ru&gl=RU&ceid=RU:ru"
     try:
@@ -70,7 +146,7 @@ def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 def generate_image_url(topic):
-    query = IMAGE_QUERIES.get(topic, "money finance law")
+    query = image_query_for(topic)
     if PEXELS_API_KEY:
         try:
             r = requests.get(
@@ -91,18 +167,21 @@ def generate_image_url(topic):
     return f"https://loremflickr.com/1024/640/{keywords}"
 
 def generate_post():
-    content_type = random.choice(CONTENT_TYPES)
-    topic = random.choice(TOPICS)
-    news = fetch_news() if content_type == "новость" else None
+    topic, content_type = get_scheduled_combo()
+    print(f"Scheduled combo: type={content_type}, topic={topic}")
+    news = fetch_news() if content_type in ("новость", "статистика") else None
     if content_type == "новость" and not news:
         content_type = "объяснение"
 
     client = OpenAI(api_key=API_KEY, base_url="https://api.groq.com/openai/v1")
 
-    news_block = f"Новость для поста: {news['title']}\n" if news else ""
+    news_block = f"Новость/данные для поста: {news['title']}\n" if news else ""
 
     prompt = (
         "Ты юрист по списанию долгов и автор Telegram-канала. "
+        "ГЛАВНЫЙ ТОН КАНАЛА: спокойствие и уверенность. Донеси, что банкротство — это "
+        "законная, понятная и безопасная процедура, которую государство создало, чтобы помочь людям. "
+        "Без паники и запугивания.\n"
         f"Задача: {TYPE_INSTRUCTIONS[content_type]} на тему: {topic}. "
         f"{news_block}"
         "Пост до 900 знаков. Правила:\n"
@@ -128,7 +207,7 @@ def generate_post():
                 max_tokens=1000,
             )
             text = clean_thinking(response.choices[0].message.content)
-            print(f"Groq answer ({model}), type={content_type}: {text[:80]}...")
+            print(f"Groq answer ({model}): {text[:80]}...")
             return text, topic
         except Exception as e:
             print(f"Model {model} failed: {e}")
