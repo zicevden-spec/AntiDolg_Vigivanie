@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import random
 import re
 import datetime
@@ -77,19 +78,36 @@ TYPE_INSTRUCTIONS = {
     "поддержка": "Напиши спокойный поддерживающий пост, который снимает тревогу и даёт уверенность",
 }
 
-HOURS_MAP = {6: 0, 9: 1, 12: 2, 15: 3}
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.json")
 
-def get_scheduled_combo():
-    now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
-    year, week, _ = now.isocalendar()
-    day = now.weekday()
-    hour_index = HOURS_MAP.get(now.hour, 0)
-    global_index = day * 4 + hour_index
+def load_history():
+    try:
+        with open(HISTORY_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
 
-    combos = [(t, c) for t in TOPICS for c in CONTENT_TYPES]
-    rng = random.Random(year * 100 + week)
-    rng.shuffle(combos)
-    return combos[global_index % len(combos)]
+def save_history(history):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False)
+
+def prune_history(history):
+    week_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+    out = []
+    for e in history:
+        try:
+            if datetime.datetime.fromisoformat(e["ts"]) >= week_ago:
+                out.append(e)
+        except Exception:
+            pass
+    return out
+
+def pick_combo(history):
+    used = {(e.get("topic"), e.get("type")) for e in history}
+    free = [(t, c) for t in TOPICS for c in CONTENT_TYPES if (t, c) not in used]
+    if not free:
+        free = [(t, c) for t in TOPICS for c in CONTENT_TYPES]
+    return random.choice(free)
 
 def image_query_for(topic):
     mapping = [
@@ -145,30 +163,33 @@ def fetch_news():
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
-def generate_image_url(topic):
+def generate_image_url(topic, history):
     query = image_query_for(topic)
+    used = {e.get("image_url") for e in history}
     if PEXELS_API_KEY:
         try:
             r = requests.get(
                 "https://api.pexels.com/v1/search",
                 headers={"Authorization": PEXELS_API_KEY},
-                params={"query": query, "per_page": 10},
+                params={"query": query, "per_page": 30},
                 timeout=15,
             )
             photos = r.json().get("photos", [])
-            if photos:
-                url = random.choice(photos)["src"]["large"]
+            candidates = [p["src"]["large"] for p in photos if p["src"]["large"] not in used]
+            if not candidates:
+                candidates = [p["src"]["large"] for p in photos]
+            if candidates:
+                url = random.choice(candidates)
                 print(f"Image from Pexels: {url}")
                 return url
         except Exception as e:
             print(f"Pexels error: {e}")
     keywords = query.replace(" ", ",")
-    print(f"Image from LoremFlickr: {keywords}")
-    return f"https://loremflickr.com/1024/640/{keywords}"
+    return f"https://loremflickr.com/1024/640/{keywords}?random={random.randint(1, 100000)}"
 
-def generate_post():
-    topic, content_type = get_scheduled_combo()
-    print(f"Scheduled combo: type={content_type}, topic={topic}")
+def generate_post(history):
+    topic, content_type = pick_combo(history)
+    print(f"Combo: type={content_type}, topic={topic}")
     news = fetch_news() if content_type in ("новость", "статистика") else None
     if content_type == "новость" and not news:
         content_type = "объяснение"
@@ -208,7 +229,7 @@ def generate_post():
             )
             text = clean_thinking(response.choices[0].message.content)
             print(f"Groq answer ({model}): {text[:80]}...")
-            return text, topic
+            return text, topic, content_type
         except Exception as e:
             print(f"Model {model} failed: {e}")
 
@@ -219,4 +240,4 @@ def generate_post():
         f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
         f"🤝 [Хочу стать агентом]({AGENT_LINK})"
     )
-    return fallback, topic
+    return fallback, topic, content_type

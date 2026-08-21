@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
+import datetime
 import requests
 from dotenv import load_dotenv
-from generator import generate_post, generate_image_url
+from generator import (
+    generate_post, generate_image_url,
+    load_history, save_history, prune_history,
+)
 
 load_dotenv()
 
@@ -37,11 +41,19 @@ def send_message(text):
     r.raise_for_status()
 
 if __name__ == "__main__":
+    history = prune_history(load_history())
     print("Генерируем пост...")
-    post_text, topic = generate_post()
-    print("Генерируем картинку...")
-    image_url = generate_image_url(topic)
+    post_text, topic, ctype = generate_post(history)
+    print("Подбираем картинку...")
+    image_url = generate_image_url(topic, history)
     print("Отправляем в канал...")
     if not send_with_photo(post_text, image_url):
         send_message(post_text)
+    history.append({
+        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "topic": topic,
+        "type": ctype,
+        "image_url": image_url,
+    })
+    save_history(history)
     print("Post published!")
