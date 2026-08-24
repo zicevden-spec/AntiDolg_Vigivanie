@@ -9,6 +9,9 @@ def split_markdown(text):
     clean = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
     return clean, pairs
 
+def markdown_to_vk(text):
+    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1: \2", text)
+
 def try_upload_wall_photo(token, image_bytes, extra):
     s = requests.post(VK_API + "photos.getWallUploadServer", data={
         "access_token": token, "v": "5.131", **extra
@@ -47,12 +50,10 @@ def vk_post(token, group_id, text, image_bytes=None):
         attachments.append(photo)
 
     if photo and pairs:
+        body = clean_text
         attachments.append(pairs[0][1])
-        body = clean_text
     else:
-        body = clean_text
-        if pairs:
-            body += "\n\n" + "\n".join(f"{label}: {url}" for label, url in pairs)
+        body = markdown_to_vk(text)
 
     params = {
         "access_token": token,
