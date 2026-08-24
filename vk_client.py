@@ -12,12 +12,15 @@ def split_markdown(text):
 def markdown_to_vk(text):
     return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1: \2", text)
 
+def pexels_card_url(image_url):
+    m = re.search(r"/photos/(\d+)/", image_url or "")
+    return f"https://www.pexels.com/photo/{m.group(1)}/" if m else None
+
 def try_upload_wall_photo(token, image_bytes, extra):
     s = requests.post(VK_API + "photos.getWallUploadServer", data={
         "access_token": token, "v": "5.131", **extra
     }, timeout=30).json()
     if "error" in s:
-        print(f"VK upload server {extra or 'default'} denied: {s['error'].get('error_code')}")
         return None
     up = requests.post(
         s["response"]["upload_url"],
@@ -29,32 +32,30 @@ def try_upload_wall_photo(token, image_bytes, extra):
         "server": up["server"], "photo": up["photo"], "hash": up["hash"],
     }, timeout=30).json()
     if "error" in sv:
-        print(f"VK saveWallPhoto denied: {sv['error'].get('error_code')}")
         return None
     p = sv["response"][0]
     print("VK photo uploaded!")
     return f"photo{p['owner_id']}_{p['id']}"
 
-def upload_photo(token, group_id, image_bytes):
-    return (
-        try_upload_wall_photo(token, image_bytes, {})
-        or try_upload_wall_photo(token, image_bytes, {"group_id": group_id})
-    )
-
-def vk_post(token, group_id, text, image_bytes=None):
+def vk_post(token, group_id, text, image_bytes=None, image_url=None, user_token=None):
     clean_text, pairs = split_markdown(text)
-    photo = upload_photo(token, group_id, image_bytes) if image_bytes else None
-
+    photo = None
+    if user_token and image_bytes:
+        photo = (
+            try_upload_wall_photo(user_token, image_bytes, {"group_id": group_id})
+            or try_upload_wall_photo(user_token, image_bytes, {})
+        )
     attachments = []
-    if photo:
-        attachments.append(photo)
-
     if photo and pairs:
         body = clean_text
-        attachments.append(pairs[0][1])
+        attachments = [photo, pairs[0][1]]
+        rest = pairs[1:]
     else:
         body = markdown_to_vk(text)
-
+        card = pexels_card_url(image_url)
+        if card:
+            attachments = [card]
+        rest = []
     params = {
         "access_token": token,
         "v": "5.131",
@@ -64,16 +65,17 @@ def vk_post(token, group_id, text, image_bytes=None):
     }
     if attachments:
         params["attachments"] = ",".join(attachments)
-
     r = requests.post(VK_API + "wall.post", data=params, timeout=30).json()
+    if "error" in r and attachments:
+        params.pop("attachments")
+        r = requests.post(VK_API + "wall.post", data=params, timeout=30).json()
     if "error" in r:
         print(f"VK error: {r['error']}")
         return False
     post_id = r["response"]["post_id"]
     print(f"VK post ok: post_id={post_id}")
-
-    if photo and len(pairs) > 1:
-        comment = "\n".join(f"{label}: {url}" for label, url in pairs[1:])
+    if photo and rest:
+        comment = "\n".join(f"{label}: {url}" for label, url in rest)
         c = requests.post(VK_API + "wall.createComment", data={
             "access_token": token, "v": "5.131",
             "owner_id": -int(group_id),

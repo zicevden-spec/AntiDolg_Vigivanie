@@ -33,4 +33,5 @@ jobs:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           VK_TOKEN: ${{ secrets.VK_TOKEN }}
           VK_GROUP_ID: ${{ secrets.VK_GROUP_ID }}
+          VK_USER_TOKEN: ${{ secrets.VK_USER_TOKEN }}
         run: python main.py

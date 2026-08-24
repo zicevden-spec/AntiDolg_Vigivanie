@@ -15,6 +15,7 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 VK_TOKEN = os.getenv("VK_TOKEN")
 VK_GROUP_ID = os.getenv("VK_GROUP_ID")
+VK_USER_TOKEN = os.getenv("VK_USER_TOKEN")
 
 def send_with_photo(text, image_bytes):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     if VK_TOKEN and VK_GROUP_ID:
         print("Отправляем во VK...")
         try:
-            vk_post(VK_TOKEN, VK_GROUP_ID, post_text, image_bytes)
+            vk_post(VK_TOKEN, VK_GROUP_ID, post_text, image_bytes, image_url, VK_USER_TOKEN)
         except Exception as e:
             print(f"VK failed: {e}")
 
