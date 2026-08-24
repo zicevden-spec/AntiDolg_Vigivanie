@@ -42,84 +42,95 @@ def send_message(text):
     print(f"Telegram response: {r.status_code}")
     r.raise_for_status()
 
+def send_long_article(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    chunks = []
+    full = text
+    while full:
+        if len(full) <= 4096:
+            chunks.append(full)
+            break
+        split_at = full.rfind("\n", 0, 4096)
+        if split_at < 0:
+            split_at = 4096
+        chunks.append(full[:split_at])
+        full = full[split_at:].lstrip()
+    ok = True
+    for i, ch in enumerate(chunks):
+        r = requests.post(url, json={
+            "chat_id": CHANNEL_ID,
+            "text": ch,
+            "disable_web_page_preview": True,
+        }, timeout=30)
+        print(f"Long article part {i+1}/{len(chunks)}: {r.status_code}")
+        if r.status_code != 200:
+            ok = False
+    return ok
+
 if __name__ == "__main__":
-    history = prune_history(load_history())
-    print("Генерируем пост...")
-    post_text, topic, ctype = generate_post(history)
-    print("Скачиваем картинку...")
-    image_bytes = None
-    image_url = generate_image_url(topic, history)
-    try:
-        r = requests.get(image_url, timeout=90)
-        r.raise_for_status()
-        image_bytes = r.content
-    except Exception as e:
-        print(f"Image download failed: {e}")
-
-    print("Отправляем в Telegram...")
-    if image_bytes and send_with_photo(post_text, image_bytes):
-        pass
-    else:
-        send_message(post_text)
-
-    if VK_TOKEN and VK_GROUP_ID:
-        print("Отправляем во VK...")
-        try:
-            vk_post(VK_TOKEN, VK_GROUP_ID, post_text, image_bytes, image_url, VK_USER_TOKEN)
-        except Exception as e:
-            print(f"VK failed: {e}")
-
+    now = datetime.datetime.now(datetime.timezone.utc)
     event = os.getenv("GITHUB_EVENT_NAME", "")
-    now_hour = datetime.datetime.now(datetime.timezone.utc).hour
-    user_id = os.getenv("TELEGRAM_USER_ID")
-    if user_id and (event == "workflow_dispatch" or now_hour in (6, 9, 12, 15)):
-        print("Готовим статью для Дзена...")
+    manual = event == "workflow_dispatch"
+    skip_short = (now.hour == 10 and not manual)
+
+    history = prune_history(load_history())
+
+    if not skip_short:
+        print("Генерируем пост...")
+        post_text, topic, ctype = generate_post(history)
+        print("Скачиваем картинку...")
+        image_url = generate_image_url(topic, history)
+        image_bytes = None
+        try:
+            r = requests.get(image_url, timeout=90)
+            r.raise_for_status()
+            image_bytes = r.content
+            print(f"Image from Pexels: {image_url}")
+        except Exception as e:
+            print(f"Image download failed: {e}")
+
+        print("Отправляем в Telegram...")
+        if image_bytes and send_with_photo(post_text, image_bytes):
+            pass
+        else:
+            send_message(post_text)
+
+        if VK_TOKEN and VK_GROUP_ID:
+            print("Отправляем во VK...")
+            try:
+                vk_post(VK_TOKEN, VK_GROUP_ID, post_text, image_bytes, image_url, VK_USER_TOKEN)
+            except Exception as e:
+                print(f"VK failed: {e}")
+
+        history.append({
+            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "topic": topic,
+            "type": ctype,
+            "image_url": image_url,
+        })
+        save_history(history)
+        print("Post published!")
+
+    if now.hour == 10 or manual:
+        print("Готовим лонгрид для Дзена...")
         try:
             from generator import generate_dzen_article
-            article = generate_dzen_article()
-            if article:
-                full = "📝 СТАТЬЯ ДЛЯ ДЗЕНА:\n\n" + article
-                # Telegram limit 4096, safe split
-                if len(full) <= 4000:
-                    r = requests.post(
-                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                        json={"chat_id": user_id, "text": full},
-                        timeout=30,
-                    )
-                    print(f"Dzen article sent: {r.status_code}")
-                    if r.status_code != 200:
-                        print(f"TG error: {r.text[:200]}")
-                else:
-                    # Split into chunks
-                    chunks = []
-                    while full:
-                        if len(full) <= 4000:
-                            chunks.append(full)
-                            break
-                        split_at = full.rfind("\n", 0, 4000)
-                        if split_at < 0:
-                            split_at = 4000
-                        chunks.append(full[:split_at])
-                        full = full[split_at:].lstrip()
-                    print(f"Dzen article split into {len(chunks)} parts")
-                    for i, ch in enumerate(chunks):
-                        prefix = f"[{i+1}/{len(chunks)}] " if len(chunks) > 1 else ""
-                        r = requests.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                            json={"chat_id": user_id, "text": prefix + ch},
-                            timeout=30,
-                        )
-                        print(f"  Part {i+1}: {r.status_code}")
-                        if r.status_code != 200:
-                            print(f"  TG error: {r.text[:200]}")
+            result = generate_dzen_article()
+            if result:
+                article, topic = result
+                ok = send_long_article(article)
+                if ok and VK_TOKEN and VK_GROUP_ID:
+                    print("Отправляем лонгрид во VK...")
+                    try:
+                        vk_post(VK_TOKEN, VK_GROUP_ID, article, None, None, VK_USER_TOKEN)
+                    except Exception as e:
+                        print(f"VK longread failed: {e}")
+                history.append({
+                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "topic": topic,
+                    "type": "лонгрид",
+                })
+                save_history(history)
+                print("Longread published!")
         except Exception as e:
-            print(f"Dzen send failed: {e}")
-
-    history.append({
-        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "topic": topic,
-        "type": ctype,
-        "image_url": image_url,
-    })
-    save_history(history)
-    print("Post published!")
+            print(f"Longread failed: {e}")
