@@ -302,7 +302,7 @@ def generate_dzen_article():
             )
             text = ensure_dzen_links(clean_thinking(response.choices[0].message.content))
             print(f"Dzen article ready ({model})")
-            return text
+            return text, topic
         except Exception as e:
             print(f"Dzen model {model} failed: {e}")
     return None
