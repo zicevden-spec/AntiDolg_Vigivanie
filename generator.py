@@ -92,22 +92,32 @@ def save_history(history):
         json.dump(history, f, ensure_ascii=False)
 
 def prune_history(history):
-    week_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+    two_days = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)
     out = []
     for e in history:
         try:
-            if datetime.datetime.fromisoformat(e["ts"]) >= week_ago:
+            if datetime.datetime.fromisoformat(e["ts"]) >= two_days:
                 out.append(e)
         except Exception:
             pass
     return out
 
+
 def pick_combo(history):
-    used = {(e.get("topic"), e.get("type")) for e in history}
-    free = [(t, c) for t in TOPICS for c in CONTENT_TYPES if (t, c) not in used]
-    if not free:
-        free = [(t, c) for t in TOPICS for c in CONTENT_TYPES]
-    return random.choice(free)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    day_ago = now - datetime.timedelta(hours=24)
+    two_days_ago = now - datetime.timedelta(days=2)
+    topics_today = {e["topic"] for e in history if datetime.datetime.fromisoformat(e["ts"]) >= day_ago}
+    recent_pairs = {(e["topic"], e["type"]) for e in history if datetime.datetime.fromisoformat(e["ts"]) >= two_days_ago}
+    candidates = [(t, c) for t in TOPICS for c in CONTENT_TYPES if t not in topics_today and (t, c) not in recent_pairs]
+    if not candidates:
+        candidates = [(t, c) for t in TOPICS for c in CONTENT_TYPES if (t, c) not in recent_pairs]
+    if not candidates:
+        candidates = [(t, c) for t in TOPICS for c in CONTENT_TYPES]
+    print(f"Candidates pool: {len(candidates)}")
+    return random.choice(candidates)
+
+
 
 def image_query_for(topic):
     mapping = [
