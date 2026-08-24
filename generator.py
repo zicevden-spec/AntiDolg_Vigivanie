@@ -173,18 +173,47 @@ def fetch_news():
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
-def normalize_links(text):
-    cta = [
-        ("💸", "Избавиться от долгов", DEBT_LINK),
-        ("👉", "Пройти опрос", AFFILIATE_LINK),
-        ("🤝", "Хочу стать агентом", AGENT_LINK),
-    ]
-    for emoji, label, url in cta:
-        text = re.sub(r"\[[^\]]*\]\(" + re.escape(url) + r"\)", "", text)
-        text = text.replace(url, "")
-        text = re.sub(r"^[^\n]*" + re.escape(label) + r"[^\n]*$", "", text, flags=re.MULTILINE)
+def normalize_links(text, max_len=None):
+    # Удаляем ВСЕ упоминания наших CTA во всех возможных форматах
+    text = re.sub(r"\[[^\]]*\]\(https?://[^\)]+\)", "", text)
+    text = text.replace(DEBT_LINK, "")
+    text = text.replace(AFFILIATE_LINK, "")
+    text = text.replace(AGENT_LINK, "")
+    text = re.sub(r"Избавиться от долгов\s*\(.*?\)", "", text)
+    text = re.sub(r"Пройти опрос\s*\(.*?\)", "", text)
+    text = re.sub(r"Хочу стать агентом\s*\(.*?\)", "", text)
+    text = text.replace("Избавиться от долгов", "")
+    text = text.replace("Пройти опрос", "")
+    text = text.replace("Хочу стать агентом", "")
+    # Убираем строки с одними эмодзи и пробелами
+    clean_lines = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if re.match(r"^[💸👉🤝\s]+$", stripped):
+            continue
+        if stripped:
+            clean_lines.append(line)
+    text = "\n".join(clean_lines)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
-    return text + "\n" + "\n".join(f"{e} [{l}]({u})" for e, l, u in cta)
+    # Формат по запросу пользователя
+    footer = "\n\n" + "\n".join([
+        f"💸 Избавиться от долгов ({DEBT_LINK})",
+        f"👉 Пройти опрос ({AFFILIATE_LINK})",
+        f"🤝 Хочу стать агентом ({AGENT_LINK})",
+    ])
+    if max_len and len(text) + len(footer) > max_len:
+        budget = max_len - len(footer) - 10
+        cut = text[:budget]
+        idx = cut.rfind("\n\n")
+        if idx > budget * 0.6:
+            cut = cut[:idx]
+        else:
+            idx2 = cut.rfind(". ")
+            if idx2 > budget * 0.6:
+                cut = cut[:idx2 + 1]
+        text = cut.rstrip()
+        print(f"Truncated to {max_len}")
+    return text + footer
 
 
 def ensure_links(text):
@@ -306,7 +335,8 @@ def generate_dzen_article():
             "3. Раздели текст на 3-4 смысловых блока с короткими подзаголовками (обычным текстом, без # и * и без КАПСЛОКА).\n"
             "4. В конце — органичный вывод (2-3 предложения), который естественно завершает мысль. ЗАПРЕЩЕНО использовать шаблонные заголовки типа 'ВЫВОД', 'ПРАКТИЧЕСКИЙ ВЫВОД', 'ИТОГ', 'ПРИЗЫВ К ДЕЙСТВИЮ' и подобные — просто пиши связный заключительный абзац.\n"
             "5. Тон: спокойный, уверенный, экспертный. Банкротство — это законный инструмент помощи, не катастрофа.\n"
-            "6. В самом конце добавь три строки с обычными ссылками (без Markdown):\n"
+            "6. Перед ссылками добавь отдельной строкой: Больше полезных материалов в нашем канале: https://t.me/AntiDolg_Vigivanie
+7. В самом конце добавь три строки с обычными ссылками (без Markdown):\n"
             f"Избавиться от долгов: {DEBT_LINK}\n"
             f"Пройти опрос: {AFFILIATE_LINK}\n"
             f"Хочу стать агентом: {AGENT_LINK}\n"
