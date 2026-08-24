@@ -277,36 +277,44 @@ def ensure_dzen_links(text):
 
 
 def generate_dzen_article():
-    topic = random.choice(TOPICS)
     client = OpenAI(api_key=API_KEY, base_url="https://api.groq.com/openai/v1")
-    prompt = (
-        "Ты юрист по списанию долгов и автор Дзена. "
-        f"Напиши статью на тему: {topic}. "
-        "Формат:\n"
-        "1. Первая строка — цепляющий заголовок (без символа #).\n"
-        "2. Затем пустая строка и текст 3500-4000 знаков (максимально длинный, это важно): вступление, 3-4 раздела с подзаголовками (без # и *), вывод.\n"
-        "3. Тон: спокойный, уверенный, банкротство это законно и безопасно.\n"
-        "4. В конце три строки с обычными ссылками:\n"
-        f"Избавиться от долгов: {DEBT_LINK}\n"
-        f"Пройти опрос: {AFFILIATE_LINK}\n"
-        f"Хочу стать агентом: {AGENT_LINK}\n"
-        "5. НЕ показывай рассуждения, только готовую статью.\n"
-    )
-    for model in WORKING_MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8,
-                max_tokens=4096,
-            )
-            raw = clean_thinking(response.choices[0].message.content)
+    attempts = 0
+    while attempts < 3:
+        topic = random.choice(TOPICS)
+        prompt = (
+            "Ты опытный юрист по банкротству физлиц с 15-летним стажем. "
+            "Твоя задача — писать образовательные статьи, которые помогают обычным людям разобраться в законных процедурах избавления от долгов. "
+            "Это официальный государственный механизм помощи гражданам, абсолютно легальный и безопасный. "
+            f"Напиши подробную статью на тему: {topic}. "
+            "Формат статьи:\n"
+            "1. Первая строка — цепляющий заголовок (без символа #).\n"
+            "2. Затем пустая строка и основной текст 3500-4000 знаков (максимально длинный, это важно).\n"
+            "3. Раздели текст на 3-4 смысловых блока с подзаголовками (пиши подзаголовки КАПСЛОКОМ, без # и *).\n"
+            "4. В конце — практический вывод и призыв к действию.\n"
+            "5. Тон: спокойный, уверенный, экспертный. Банкротство — это законный инструмент помощи, не катастрофа.\n"
+            "6. В самом конце добавь три строки с обычными ссылками (без Markdown):\n"
+            f"Избавиться от долгов: {DEBT_LINK}\n"
+            f"Пройти опрос: {AFFILIATE_LINK}\n"
+            f"Хочу стать агентом: {AGENT_LINK}\n"
+            "7. НЕ показывай рассуждения, только готовую статью.\n"
+        )
+        for model in WORKING_MODELS:
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.8,
+                    max_tokens=4096,
+                )
+                raw = clean_thinking(response.choices[0].message.content)
                 if ("I'm sorry" in raw or "I can't" in raw or "I cannot" in raw or "не могу" in raw or "извините" in raw or len(raw) < 500):
-                    print("Dzen: model refused topic, retrying with another")
+                    print(f"Dzen: model refused topic '{topic}', retrying")
                     break
                 text = ensure_dzen_links(raw)
-            print(f"Dzen article ready ({model})")
-            return text, topic
-        except Exception as e:
-            print(f"Dzen model {model} failed: {e}")
+                print(f"Dzen article ready ({model}), topic: {topic}")
+                return text, topic
+            except Exception as e:
+                print(f"Dzen model {model} failed: {e}")
+        attempts += 1
+    print("Dzen: all attempts failed")
     return None
