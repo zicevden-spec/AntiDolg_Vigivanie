@@ -173,6 +173,20 @@ def fetch_news():
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
+def normalize_links(text):
+    cta = [
+        ("💸", "Избавиться от долгов", DEBT_LINK),
+        ("👉", "Пройти опрос", AFFILIATE_LINK),
+        ("🤝", "Хочу стать агентом", AGENT_LINK),
+    ]
+    for emoji, label, url in cta:
+        text = re.sub(r"\[[^\]]*\]\(" + re.escape(url) + r"\)", "", text)
+        text = text.replace(url, "")
+        text = re.sub(r"^[^\n]*" + re.escape(label) + r"[^\n]*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text + "\n" + "\n".join(f"{e} [{l}]({u})" for e, l, u in cta)
+
+
 def ensure_links(text):
     links = [
         ("💸 [Избавиться от долгов]({})".format(DEBT_LINK), DEBT_LINK),
@@ -250,7 +264,7 @@ def generate_post(history):
                 temperature=0.8,
                 max_tokens=1000,
             )
-            text = ensure_links(clean_thinking(response.choices[0].message.content))
+            text = normalize_links(clean_thinking(response.choices[0].message.content))
             print(f"Groq answer ({model}): {text[:80]}...")
             return text, topic, content_type
         except Exception as e:
