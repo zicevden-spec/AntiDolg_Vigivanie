@@ -163,6 +163,19 @@ def fetch_news():
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
+def ensure_links(text):
+    links = [
+        ("💸 [Избавиться от долгов]({})".format(DEBT_LINK), DEBT_LINK),
+        ("👉 [Пройти опрос]({})".format(AFFILIATE_LINK), AFFILIATE_LINK),
+        ("🤝 [Хочу стать агентом]({})".format(AGENT_LINK), AGENT_LINK),
+    ]
+    missing = [line for line, url in links if url not in text]
+    if missing:
+        print(f"Model forgot links, adding: {len(missing)}")
+        text = text.rstrip() + "\n" + "\n".join(missing)
+    return text
+
+
 def generate_image_url(topic, history):
     query = image_query_for(topic)
     used = {e.get("image_url") for e in history}
@@ -227,7 +240,7 @@ def generate_post(history):
                 temperature=0.8,
                 max_tokens=1000,
             )
-            text = clean_thinking(response.choices[0].message.content)
+            text = ensure_links(clean_thinking(response.choices[0].message.content)
             print(f"Groq answer ({model}): {text[:80]}...")
             return text, topic, content_type
         except Exception as e:
