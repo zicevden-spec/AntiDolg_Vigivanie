@@ -300,7 +300,11 @@ def generate_dzen_article():
                 temperature=0.8,
                 max_tokens=4096,
             )
-            text = ensure_dzen_links(clean_thinking(response.choices[0].message.content))
+            raw = clean_thinking(response.choices[0].message.content)
+                if ("I'm sorry" in raw or "I can't" in raw or "I cannot" in raw or "не могу" in raw or "извините" in raw or len(raw) < 500):
+                    print("Dzen: model refused topic, retrying with another")
+                    break
+                text = ensure_dzen_links(raw)
             print(f"Dzen article ready ({model})")
             return text, topic
         except Exception as e:
