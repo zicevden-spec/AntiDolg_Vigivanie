@@ -72,18 +72,46 @@ if __name__ == "__main__":
     event = os.getenv("GITHUB_EVENT_NAME", "")
     now_hour = datetime.datetime.now(datetime.timezone.utc).hour
     user_id = os.getenv("TELEGRAM_USER_ID")
-    if user_id and (event == "workflow_dispatch" or now_hour == 6):
+    if user_id and (event == "workflow_dispatch" or now_hour in (6, 9, 12, 15)):
         print("Готовим статью для Дзена...")
         try:
             from generator import generate_dzen_article
             article = generate_dzen_article()
             if article:
-                r = requests.post(
-                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                    json={"chat_id": user_id, "text": "📝 СТАТЬЯ ДЛЯ ДЗЕНА:\n\n" + article},
-                    timeout=30,
-                )
-                print(f"Dzen article sent: {r.status_code}")
+                full = "📝 СТАТЬЯ ДЛЯ ДЗЕНА:\n\n" + article
+                # Telegram limit 4096, safe split
+                if len(full) <= 4000:
+                    r = requests.post(
+                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                        json={"chat_id": user_id, "text": full},
+                        timeout=30,
+                    )
+                    print(f"Dzen article sent: {r.status_code}")
+                    if r.status_code != 200:
+                        print(f"TG error: {r.text[:200]}")
+                else:
+                    # Split into chunks
+                    chunks = []
+                    while full:
+                        if len(full) <= 4000:
+                            chunks.append(full)
+                            break
+                        split_at = full.rfind("\n", 0, 4000)
+                        if split_at < 0:
+                            split_at = 4000
+                        chunks.append(full[:split_at])
+                        full = full[split_at:].lstrip()
+                    print(f"Dzen article split into {len(chunks)} parts")
+                    for i, ch in enumerate(chunks):
+                        prefix = f"[{i+1}/{len(chunks)}] " if len(chunks) > 1 else ""
+                        r = requests.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json={"chat_id": user_id, "text": prefix + ch},
+                            timeout=30,
+                        )
+                        print(f"  Part {i+1}: {r.status_code}")
+                        if r.status_code != 200:
+                            print(f"  TG error: {r.text[:200]}")
         except Exception as e:
             print(f"Dzen send failed: {e}")
 
