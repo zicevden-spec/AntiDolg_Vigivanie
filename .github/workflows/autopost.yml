@@ -29,6 +29,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          VK_USER_TOKEN: ${{ secrets.VK_USER_TOKEN }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
           AFFILIATE_LINK: ${{ secrets.AFFILIATE_LINK }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           VK_TOKEN: ${{ secrets.VK_TOKEN }}

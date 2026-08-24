@@ -254,3 +254,45 @@ def generate_post(history):
         f"🤝 [Хочу стать агентом]({AGENT_LINK})"
     )
     return fallback, topic, content_type
+def ensure_dzen_links(text):
+    pairs = [
+        ("Избавиться от долгов", DEBT_LINK),
+        ("Пройти опрос", AFFILIATE_LINK),
+        ("Хочу стать агентом", AGENT_LINK),
+    ]
+    missing = [f"{label}: {url}" for label, url in pairs if url not in text]
+    if missing:
+        text = text.rstrip() + "\n" + "\n".join(missing)
+    return text
+
+
+def generate_dzen_article():
+    topic = random.choice(TOPICS)
+    client = OpenAI(api_key=API_KEY, base_url="https://api.groq.com/openai/v1")
+    prompt = (
+        "Ты юрист по списанию долгов и автор Дзена. "
+        f"Напиши статью на тему: {topic}. "
+        "Формат:\n"
+        "1. Первая строка — цепляющий заголовок (без символа #).\n"
+        "2. Затем пустая строка и текст 2000-3000 знаков: вступление, 3-4 раздела с подзаголовками (без # и *), вывод.\n"
+        "3. Тон: спокойный, уверенный, банкротство это законно и безопасно.\n"
+        "4. В конце три строки с обычными ссылками:\n"
+        f"Избавиться от долгов: {DEBT_LINK}\n"
+        f"Пройти опрос: {AFFILIATE_LINK}\n"
+        f"Хочу стать агентом: {AGENT_LINK}\n"
+        "5. НЕ показывай рассуждения, только готовую статью.\n"
+    )
+    for model in WORKING_MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.8,
+                max_tokens=2500,
+            )
+            text = ensure_dzen_links(clean_thinking(response.choices[0].message.content))
+            print(f"Dzen article ready ({model})")
+            return text
+        except Exception as e:
+            print(f"Dzen model {model} failed: {e}")
+    return None

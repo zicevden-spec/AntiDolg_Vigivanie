@@ -69,6 +69,24 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"VK failed: {e}")
 
+    event = os.getenv("GITHUB_EVENT_NAME", "")
+    now_hour = datetime.datetime.now(datetime.timezone.utc).hour
+    user_id = os.getenv("TELEGRAM_USER_ID")
+    if user_id and (event == "workflow_dispatch" or now_hour == 6):
+        print("Готовим статью для Дзена...")
+        try:
+            from generator import generate_dzen_article
+            article = generate_dzen_article()
+            if article:
+                r = requests.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={"chat_id": user_id, "text": "📝 СТАТЬЯ ДЛЯ ДЗЕНА:\n\n" + article},
+                    timeout=30,
+                )
+                print(f"Dzen article sent: {r.status_code}")
+        except Exception as e:
+            print(f"Dzen send failed: {e}")
+
     history.append({
         "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "topic": topic,
