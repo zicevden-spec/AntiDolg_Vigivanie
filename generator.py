@@ -240,7 +240,7 @@ def generate_post(history):
                 temperature=0.8,
                 max_tokens=1000,
             )
-            text = ensure_links(clean_thinking(response.choices[0].message.content)
+            text = ensure_links(clean_thinking(response.choices[0].message.content))
             print(f"Groq answer ({model}): {text[:80]}...")
             return text, topic, content_type
         except Exception as e:
