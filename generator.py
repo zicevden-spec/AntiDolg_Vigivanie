@@ -174,6 +174,7 @@ def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 def normalize_links(text, max_len=None):
+    import re
     # Удаляем ВСЕ упоминания наших CTA во всех возможных форматах
     text = re.sub(r"\[[^\]]*\]\(https?://[^\)]+\)", "", text)
     text = text.replace(DEBT_LINK, "")
@@ -195,14 +196,8 @@ def normalize_links(text, max_len=None):
             clean_lines.append(line)
     text = "\n".join(clean_lines)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
-    # Формат по запросу пользователя
-    footer = "\n\n" + "\n".join([
-        f"💸 Избавиться от долгов ({DEBT_LINK})",
-        f"👉 Пройти опрос ({AFFILIATE_LINK})",
-        f"🤝 Хочу стать агентом ({AGENT_LINK})",
-    ])
-    if max_len and len(text) + len(footer) > max_len:
-        budget = max_len - len(footer) - 10
+    if max_len and len(text) > max_len:
+        budget = max_len - 10
         cut = text[:budget]
         idx = cut.rfind("\n\n")
         if idx > budget * 0.6:
@@ -213,7 +208,7 @@ def normalize_links(text, max_len=None):
                 cut = cut[:idx2 + 1]
         text = cut.rstrip()
         print(f"Truncated to {max_len}")
-    return text + footer
+    return text
 
 
 def ensure_links(text):

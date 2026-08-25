@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import datetime
+import html
 import requests
 from dotenv import load_dotenv
 from generator import (
@@ -17,13 +18,25 @@ VK_TOKEN = os.getenv("VK_TOKEN")
 VK_GROUP_ID = os.getenv("VK_GROUP_ID")
 VK_USER_TOKEN = os.getenv("VK_USER_TOKEN")
 
+def cta_footer():
+    return "\n\n" + "\n".join([
+        f'💸 <a href="{os.getenv("DEBT_LINK")}">Избавиться от долгов</a>',
+        f'👉 <a href="{os.getenv("AFFILIATE_LINK")}">Пройти опрос</a>',
+        f'🤝 <a href="{os.getenv("AGENT_LINK")}">Хочу стать агентом</a>',
+    ])
+
+def safe_html(text):
+    return html.escape(text, quote=False).replace("&amp;", "&")
+
 def send_with_photo(text, image_bytes):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     try:
-        data = {"chat_id": CHANNEL_ID, "caption": text, "parse_mode": "Markdown"}
+        data = {"chat_id": CHANNEL_ID, "caption": text, "parse_mode": "HTML"}
         files = {"photo": ("post.jpg", image_bytes, "image/jpeg")}
         r = requests.post(url, data=data, files=files, timeout=60)
         print(f"Telegram photo response: {r.status_code}")
+        if r.status_code != 200:
+            print(f"TG error: {r.text[:300]}")
         r.raise_for_status()
         return True
     except Exception as e:
@@ -35,37 +48,34 @@ def send_message(text):
     payload = {
         "chat_id": CHANNEL_ID,
         "text": text,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
     r = requests.post(url, json=payload, timeout=30)
     print(f"Telegram response: {r.status_code}")
+    if r.status_code != 200:
+        print(f"TG error: {r.text[:300]}")
     r.raise_for_status()
 
 def send_long_article(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    chunks = []
-    full = text
-    while full:
-        if len(full) <= 4096:
-            chunks.append(full)
-            break
-        split_at = full.rfind("\n", 0, 4096)
-        if split_at < 0:
-            split_at = 4096
-        chunks.append(full[:split_at])
-        full = full[split_at:].lstrip()
-    ok = True
-    for i, ch in enumerate(chunks):
-        r = requests.post(url, json={
-            "chat_id": CHANNEL_ID,
-            "text": ch,
-            "disable_web_page_preview": True,
-        }, timeout=30)
-        print(f"Long article part {i+1}/{len(chunks)}: {r.status_code}")
-        if r.status_code != 200:
-            ok = False
-    return ok
+    print(f"Longread length: {len(text)} chars")
+    if len(text) > 4096:
+        text = text[:4096]
+        idx = text.rfind("\n")
+        if idx > 3000:
+            text = text[:idx]
+        print("Longread hard-truncated to 4096")
+    r = requests.post(url, json={
+        "chat_id": CHANNEL_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }, timeout=30)
+    print(f"Longread sent: {r.status_code}")
+    if r.status_code != 200:
+        print(f"TG error: {r.text[:300]}")
+    return r.status_code == 200
 
 if __name__ == "__main__":
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -88,6 +98,9 @@ if __name__ == "__main__":
             print(f"Image from Pexels: {image_url}")
         except Exception as e:
             print(f"Image download failed: {e}")
+
+        # Безопасное экранирование + HTML CTA
+        post_text = safe_html(post_text) + cta_footer()
 
         print("Отправляем в Telegram...")
         if image_bytes and send_with_photo(post_text, image_bytes):
@@ -118,6 +131,7 @@ if __name__ == "__main__":
             result = generate_dzen_article()
             if result:
                 article, topic = result
+                article = safe_html(article) + cta_footer()
                 ok = send_long_article(article)
                 if ok and VK_TOKEN and VK_GROUP_ID:
                     print("Отправляем лонгрид во VK...")
