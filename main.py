@@ -100,7 +100,13 @@ if __name__ == "__main__":
             print(f"Image download failed: {e}")
 
         # Безопасное экранирование + HTML CTA
-        post_text = safe_html(format_readable(post_text)); print(f"Body length: {len(post_text)}"); post_text = post_text + cta_footer()
+        clean = format_readable(post_text)
+        vk_text = clean + "\n\n" + "\n".join([
+            f"💸 Избавиться от долгов: {DEBT_LINK}",
+            f"👉 Пройти опрос: {AFFILIATE_LINK}",
+            f"🤝 Хочу стать агентом: {AGENT_LINK}",
+        ])
+        post_text = safe_html(clean); print(f"Body length: {len(post_text)}"); post_text = post_text + cta_footer()
 
         print("Отправляем в Telegram...")
         if image_bytes and send_with_photo(post_text, image_bytes):
@@ -111,7 +117,7 @@ if __name__ == "__main__":
         if VK_TOKEN and VK_GROUP_ID:
             print("Отправляем во VK...")
             try:
-                vk_post(VK_TOKEN, VK_GROUP_ID, post_text, image_bytes, image_url, VK_USER_TOKEN)
+                vk_post(VK_TOKEN, VK_GROUP_ID, vk_text, image_bytes, image_url, VK_USER_TOKEN)
             except Exception as e:
                 print(f"VK failed: {e}")
 
@@ -131,12 +137,13 @@ if __name__ == "__main__":
             result = generate_dzen_article()
             if result:
                 article, topic = result
+                vk_long = article + "\n\n📢 Больше полезных материалов в нашем канале: https://t.me/AntiDolg_Vigivanie\n💸 Избавиться от долгов: " + DEBT_LINK + "\n👉 Пройти опрос: " + AFFILIATE_LINK + "\n🤝 Хочу стать агентом: " + AGENT_LINK
                 article = safe_html(article) + '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
                 ok = send_long_article(article)
                 if ok and VK_TOKEN and VK_GROUP_ID:
                     print("Отправляем лонгрид во VK...")
                     try:
-                        vk_post(VK_TOKEN, VK_GROUP_ID, article, None, None, VK_USER_TOKEN)
+                        vk_post(VK_TOKEN, VK_GROUP_ID, vk_long, None, None, VK_USER_TOKEN)
                     except Exception as e:
                         print(f"VK longread failed: {e}")
                 history.append({
