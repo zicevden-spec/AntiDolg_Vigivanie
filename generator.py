@@ -360,3 +360,8 @@ def generate_dzen_article():
     return None
 
 
+
+def format_readable(text):
+    # Разбиваем сплошной текст на абзацы: пустая строка после точки перед эмодзи-маркером
+    text = re.sub(r'(?<=[.!?])\s+(?=[\u2600-\u27BF\U0001F000-\U0001FAFF])', '\n\n', text)
+    return text.strip()
