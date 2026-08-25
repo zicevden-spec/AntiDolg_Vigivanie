@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv
 from generator import (
     generate_post, generate_image_url,
-    load_history, save_history, prune_history,
+    load_history, save_history, prune_history, DEBT_LINK, AFFILIATE_LINK, AGENT_LINK,
 )
 from vk_client import vk_post
 
@@ -20,9 +20,9 @@ VK_USER_TOKEN = os.getenv("VK_USER_TOKEN")
 
 def cta_footer():
     return "\n\n" + "\n".join([
-        f'💸 <a href="{os.getenv("DEBT_LINK")}">Избавиться от долгов</a>',
-        f'👉 <a href="{os.getenv("AFFILIATE_LINK")}">Пройти опрос</a>',
-        f'🤝 <a href="{os.getenv("AGENT_LINK")}">Хочу стать агентом</a>',
+        f'💸 <a href="{DEBT_LINK}">Избавиться от долгов</a>',
+        f'👉 <a href="{AFFILIATE_LINK}">Пройти опрос</a>',
+        f'🤝 <a href="{AGENT_LINK}">Хочу стать агентом</a>',
     ])
 
 def safe_html(text):
@@ -100,7 +100,7 @@ if __name__ == "__main__":
             print(f"Image download failed: {e}")
 
         # Безопасное экранирование + HTML CTA
-        post_text = safe_html(post_text) + cta_footer()
+        post_text = safe_html(post_text); print(f"Body length: {len(post_text)}"); post_text = post_text + cta_footer()
 
         print("Отправляем в Telegram...")
         if image_bytes and send_with_photo(post_text, image_bytes):

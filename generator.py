@@ -183,14 +183,14 @@ def normalize_links(text, max_len=None):
     text = re.sub(r"Избавиться от долгов\s*\(.*?\)", "", text)
     text = re.sub(r"Пройти опрос\s*\(.*?\)", "", text)
     text = re.sub(r"Хочу стать агентом\s*\(.*?\)", "", text)
-    text = text.replace("Избавиться от долгов", "")
-    text = text.replace("Пройти опрос", "")
-    text = text.replace("Хочу стать агентом", "")
+    text = re.sub(r"Избавиться от долгов\s*:?", "", text)
+    text = re.sub(r"Пройти опрос\s*:?", "", text)
+    text = re.sub(r"Хочу стать агентом\s*:?", "", text)
     # Убираем строки с одними эмодзи и пробелами
     clean_lines = []
     for line in text.split("\n"):
         stripped = line.strip()
-        if re.match(r"^[💸👉🤝\s]+$", stripped):
+        if re.match(r"^[💸👉🤝\s]+$", stripped) or re.match(r"^[:;.,\-\s]+$", stripped):
             continue
         if stripped:
             clean_lines.append(line)
