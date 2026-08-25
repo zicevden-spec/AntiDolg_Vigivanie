@@ -174,38 +174,30 @@ def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 def normalize_links(text, max_len=None):
-    import re
-    # Удаляем ВСЕ упоминания наших CTA во всех возможных форматах
-    text = re.sub(r"\[[^\]]*\]\(https?://[^\)]+\)", "", text)
-    text = text.replace(DEBT_LINK, "")
-    text = text.replace(AFFILIATE_LINK, "")
-    text = text.replace(AGENT_LINK, "")
-    text = re.sub(r"Избавиться от долгов\s*\(.*?\)", "", text)
-    text = re.sub(r"Пройти опрос\s*\(.*?\)", "", text)
-    text = re.sub(r"Хочу стать агентом\s*\(.*?\)", "", text)
-    text = re.sub(r"Избавиться от долгов\s*:?", "", text)
-    text = re.sub(r"Пройти опрос\s*:?", "", text)
-    text = re.sub(r"Хочу стать агентом\s*:?", "", text)
-    # Убираем строки с одними эмодзи и пробелами
+    bad_markers = [DEBT_LINK, AFFILIATE_LINK, AGENT_LINK,
+                   "Избавиться от долгов", "Пройти опрос", "Хочу стать агентом"]
     clean_lines = []
     for line in text.split("\n"):
-        stripped = line.strip()
-        if re.match(r"^[💸👉🤝\s]+$", stripped) or re.match(r"^[:;.,\-\s]+$", stripped):
+        s = line.strip()
+        if not s:
             continue
-        if stripped:
-            clean_lines.append(line)
+        if any(m in s for m in bad_markers):
+            continue
+        if "http" in s and ("[" in s or "(" in s or "xn--" in s):
+            continue
+        if re.match(r"^[\W_]+$", s):
+            continue
+        clean_lines.append(line)
     text = "\n".join(clean_lines)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     if max_len and len(text) > max_len:
-        budget = max_len - 10
+        budget = max_len
         cut = text[:budget]
         idx = cut.rfind("\n\n")
-        if idx > budget * 0.6:
+        if idx < budget * 0.5:
+            idx = cut.rfind("\n")
+        if idx > budget * 0.5:
             cut = cut[:idx]
-        else:
-            idx2 = cut.rfind(". ")
-            if idx2 > budget * 0.6:
-                cut = cut[:idx2 + 1]
         text = cut.rstrip()
         print(f"Truncated to {max_len}")
     return text
@@ -326,7 +318,7 @@ def generate_dzen_article():
             f"Напиши подробную статью на тему: {topic}. "
             "Формат статьи:\n"
             "1. Первая строка — цепляющий заголовок (без символа #).\n"
-            "2. Затем пустая строка и основной текст СТРОГО 3200-3600 знаков, НЕ БОЛЬШЕ 3600. Структура, при которой мысль полностью закончена в лимите: вступление (около 300 знаков), 3 раздела (около 900 знаков каждый), вывод (около 400 знаков). Пиши компактно, без воды и повторов. Если чувствуешь, что не помещаешься — не начинай новую мысль, а сожми последний раздел и обязательно заверши законченным выводом.\n"
+            "2. Затем пустая строка и основной текст МИНИМУМ 3000 и МАКСИМУМ 3600 знаков. Меньше 3000 — слишком коротко, распиши каждый раздел подробнее. Структура, при которой мысль полностью закончена в лимите: вступление (около 300 знаков), 3 раздела (около 900 знаков каждый), вывод (около 400 знаков). Пиши компактно, без воды и повторов. Если чувствуешь, что не помещаешься — не начинай новую мысль, а сожми последний раздел и обязательно заверши законченным выводом.\n"
             "3. Раздели текст на 3-4 смысловых блока с короткими подзаголовками (обычным текстом, без # и * и без КАПСЛОКА).\n"
             "4. В конце — органичный вывод (2-3 предложения), который естественно завершает мысль. ЗАПРЕЩЕНО использовать шаблонные заголовки типа 'ВЫВОД', 'ПРАКТИЧЕСКИЙ ВЫВОД', 'ИТОГ', 'ПРИЗЫВ К ДЕЙСТВИЮ' и подобные — просто пиши связный заключительный абзац.\n"
             "5. Тон: спокойный, уверенный, экспертный. Банкротство — это законный инструмент помощи, не катастрофа.\n"

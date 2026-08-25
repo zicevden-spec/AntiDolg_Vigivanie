@@ -131,7 +131,7 @@ if __name__ == "__main__":
             result = generate_dzen_article()
             if result:
                 article, topic = result
-                article = safe_html(article) + cta_footer()
+                article = safe_html(article) + '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
                 ok = send_long_article(article)
                 if ok and VK_TOKEN and VK_GROUP_ID:
                     print("Отправляем лонгрид во VK...")
