@@ -34,5 +34,7 @@ jobs:
           VK_TOKEN: ${{ secrets.VK_TOKEN }}
           VK_GROUP_ID: ${{ secrets.VK_GROUP_ID }}
           VK_USER_TOKEN: ${{ secrets.VK_USER_TOKEN }}
+          MAX_SESSION_B64: ${{ secrets.MAX_SESSION_B64 }}
+          MAX_CHAT_ID: ${{ secrets.MAX_CHAT_ID }}
           TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
         run: python main.py

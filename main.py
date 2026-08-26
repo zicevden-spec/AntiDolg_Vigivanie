@@ -9,6 +9,7 @@ from generator import (
     load_history, save_history, prune_history, DEBT_LINK, AFFILIATE_LINK, AGENT_LINK, format_readable,
 )
 from vk_client import vk_post
+from max_client import max_post
 
 load_dotenv()
 
@@ -128,6 +129,9 @@ if __name__ == "__main__":
             "image_url": image_url,
         })
         save_history(history)
+        if MAX_SESSION_B64 and MAX_CHAT_ID:
+            print("Отправляем в MAX...")
+            max_post(MAX_CHAT_ID, vk_text, image_url)
         print("Post published!")
 
     if now.hour == 10 or manual:
@@ -152,6 +156,8 @@ if __name__ == "__main__":
                     "type": "лонгрид",
                 })
                 save_history(history)
-                print("Longread published!")
+                if MAX_SESSION_B64 and MAX_CHAT_ID:
+                    max_post(MAX_CHAT_ID, vk_long)
+                    print("Longread published!")
         except Exception as e:
             print(f"Longread failed: {e}")
