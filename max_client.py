@@ -1,45 +1,19 @@
 # -*- coding: utf-8 -*-
-import asyncio
-import base64
-import os
-import re
+import subprocess, sys, os
 
-def _decode_session_to_cache(b64: str) -> str:
-    cache_dir = os.path.join(os.path.dirname(__file__), "cache")
-    os.makedirs(cache_dir, exist_ok=True)
-    path = os.path.join(cache_dir, "web.db")
-    if os.path.exists(path):
-        return path
-    data = base64.b64decode(b64)
-    with open(path, "wb") as f:
-        f.write(data)
-    return path
-
-async def _send(chat_id: int, text: str, image_url: str | None = None):
-    from pymax import WebClient
-    session_b64 = os.getenv("MAX_SESSION_B64", "")
-    if not session_b64:
-        raise RuntimeError("MAX_SESSION_B64 is empty")
-    _decode_session_to_cache(session_b64)
-    client = WebClient(work_dir="cache", session_name="web.db")
-    
-    @client.on_start()
-    async def on_start(c):
-        try:
-            if image_url:
-                full_text = f"{text}\n\n📷 {image_url}"
-                await c.send_message(chat_id, full_text)
-            else:
-                await c.send_message(chat_id, text)
-        finally:
-            await c.stop()
-    await client.start()
-
-def max_post(chat_id: str | int, text: str, image_url: str | None = None):
+def max_post(chat_id, text, image_url=None):
+    if image_url:
+        text = text + "\n\n📷 " + image_url
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "max_send.py")
     try:
-        asyncio.run(_send(int(chat_id), text, image_url))
-        print(f"MAX: post sent to {chat_id}")
-        return True
+        r = subprocess.run(
+            [sys.executable, script, str(chat_id)],
+            input=text, timeout=120, capture_output=True, text=True,
+        )
+        print("MAX:", (r.stdout or "").strip()[-300:])
+        if r.returncode != 0:
+            print("MAX stderr:", (r.stderr or "").strip()[-500:])
+        return r.returncode == 0
     except Exception as e:
         print(f"MAX failed: {type(e).__name__}: {e}")
         return False
