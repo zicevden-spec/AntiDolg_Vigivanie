@@ -2,7 +2,7 @@
 import asyncio
 import base64
 import os
-import tempfile
+import re
 
 def _decode_session_to_cache(b64: str) -> str:
     cache_dir = os.path.join(os.path.dirname(__file__), "cache")
@@ -22,11 +22,13 @@ async def _send(chat_id: int, text: str, image_url: str | None = None):
         raise RuntimeError("MAX_SESSION_B64 is empty")
     _decode_session_to_cache(session_b64)
     client = WebClient(work_dir="cache", session_name="web.db")
+    
     @client.on_start()
     async def on_start(c):
         try:
             if image_url:
-                await c.send_message(chat_id, text, attachments=[{"type": "image", "url": image_url}])
+                full_text = f"{text}\n\n📷 {image_url}"
+                await c.send_message(chat_id, full_text)
             else:
                 await c.send_message(chat_id, text)
         finally:
