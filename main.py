@@ -18,6 +18,8 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 VK_TOKEN = os.getenv("VK_TOKEN")
 VK_GROUP_ID = os.getenv("VK_GROUP_ID")
 VK_USER_TOKEN = os.getenv("VK_USER_TOKEN")
+MAX_SESSION_B64 = os.getenv("MAX_SESSION_B64", "")
+MAX_CHAT_ID = os.getenv("MAX_CHAT_ID", "")
 
 def cta_footer():
     return "\n\n" + "\n".join([
