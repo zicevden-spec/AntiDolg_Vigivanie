@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 venv/
 history.json
+
+cache/
+*.db
