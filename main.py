@@ -144,7 +144,7 @@ if __name__ == "__main__":
             if result:
                 article, topic = result
                 vk_long = article + "\n\n📢 Больше полезных материалов в нашем канале: https://t.me/AntiDolg_Vigivanie\n💸 Избавиться от долгов: " + DEBT_LINK + "\n👉 Пройти опрос: " + AFFILIATE_LINK + "\n🤝 Хочу стать агентом: " + AGENT_LINK
-                article = safe_html(article) + '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
+                article = safe_html(format_readable(article)) + '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
                 ok = send_long_article(article)
                 if ok and VK_TOKEN and VK_GROUP_ID:
                     print("Отправляем лонгрид во VK...")
