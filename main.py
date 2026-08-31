@@ -104,6 +104,13 @@ if __name__ == "__main__":
 
         # Безопасное экранирование + HTML CTA
         clean = format_readable(post_text)
+        if len(clean.strip()) < 80:
+            print("WARNING: body too short, retrying generation...")
+            retry_text, _t, _c = generate_post(history)
+            clean = format_readable(retry_text)
+        if len(clean.strip()) < 80:
+            print("WARNING: using fallback text")
+            clean = "Иногда достаточно одной минуты, чтобы понять: выход есть. Ответь на несколько вопросов и увидишь свой вариант - без звонков и обязательств."
         vk_text = clean + "\n\n" + "\n".join([
             f"💸 Избавиться от долгов: {DEBT_LINK}",
             f"👉 Пройти опрос: {AFFILIATE_LINK}",
