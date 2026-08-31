@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, os, asyncio, base64
+import sys, os, asyncio, base64, signal
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -13,6 +13,9 @@ def prepare_session():
             f.write(base64.b64decode(b64))
 
 def main():
+    if len(sys.argv) < 2:
+        print("MAX: no chat_id", file=sys.stderr)
+        os._exit(1)
     chat_id = int(sys.argv[1])
     text = sys.stdin.read()
     prepare_session()
@@ -24,10 +27,16 @@ def main():
         try:
             await c.send_message(chat_id, text)
             print("MAX: message sent")
-        finally:
-            await c.stop()
+        except Exception as e:
+            print(f"MAX send error: {type(e).__name__}: {e}", file=sys.stderr)
+        # Жёсткий выход без await client.stop() — pymax вешает loop
+        os._exit(0)
 
-    asyncio.run(client.start())
+    try:
+        asyncio.run(client.start())
+    except Exception as e:
+        print(f"MAX start error: {type(e).__name__}: {e}", file=sys.stderr)
+    # Фолбэк если on_start не отстрелил
     os._exit(0)
 
 main()

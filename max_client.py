@@ -8,7 +8,7 @@ def max_post(chat_id, text, image_url=None):
     try:
         r = subprocess.run(
             [sys.executable, script, str(chat_id)],
-            input=text, timeout=120, capture_output=True, text=True,
+            input=text, timeout=180, capture_output=True, text=True,
         )
         print("MAX:", (r.stdout or "").strip()[-300:])
         if r.returncode != 0:
