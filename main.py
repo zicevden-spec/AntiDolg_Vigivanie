@@ -117,16 +117,17 @@ if __name__ == "__main__":
             f"👉 Пройти опрос: {AFFILIATE_LINK}",
             f"🤝 Хочу стать агентом: {AGENT_LINK}",
         ])
-        post_text = safe_html(clean); print(f"Body length: {len(post_text)}"); post_text = post_text + cta_footer()
+        footer = cta_footer()
+        body_html = safe_html(clean)
+        if len(body_html) + len(footer) > 1024:
+            limit = 1024 - len(footer) - 5
+            body_html = body_html[:limit].rsplit(". ", 1)[0] + "..."
+            print(f"TG caption fitted: {len(body_html)}")
+        post_text = body_html + footer
+        print(f"Body length: {len(post_text)}")
 
         print("Отправляем в Telegram...")
-        if len(post_text) > 1024:
-            print("Long caption: photo + text separately")
-            teaser = clean[:150].rsplit(" ", 1)[0] + "..."
-            if image_bytes:
-                send_with_photo(teaser, image_bytes)
-            send_message(post_text)
-        elif image_bytes and send_with_photo(post_text, image_bytes):
+        if image_bytes and send_with_photo(post_text, image_bytes):
             pass
         else:
             send_message(post_text)
@@ -159,6 +160,10 @@ if __name__ == "__main__":
                 article, topic = result
                 vk_long = article + "\n\n📢 Больше полезных материалов в нашем канале: https://t.me/AntiDolg_Vigivanie\n💸 Избавиться от долгов: " + DEBT_LINK + "\n👉 Пройти опрос: " + AFFILIATE_LINK + "\n🤝 Хочу стать агентом: " + AGENT_LINK
                 article = safe_html(format_readable(article)) + '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
+                if len(article) > 4096:
+                    keep = '\n\n📢 Больше полезных материалов в нашем канале: <a href="https://t.me/AntiDolg_Vigivanie">t.me/AntiDolg_Vigivanie</a>' + cta_footer()
+                    article = article[:4096 - len(keep) - 5].rsplit(". ", 1)[0] + "..." + keep
+                    print(f"Dzen article fitted: {len(article)}")
                 ok = send_long_article(article)
                 if ok and VK_TOKEN and VK_GROUP_ID:
                     print("Отправляем лонгрид во VK...")
