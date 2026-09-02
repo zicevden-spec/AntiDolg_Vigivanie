@@ -13,6 +13,7 @@ from max_client import max_post
 
 load_dotenv()
 
+POST_TYPE = os.getenv("POST_TYPE", "short")  # "short" или "longread"
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 VK_TOKEN = os.getenv("VK_TOKEN")
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     history = prune_history(load_history())
 
-    if not skip_short:
+    if POST_TYPE in ("short", "both"):
         print("Генерируем пост...")
         post_text, topic, ctype = generate_post(history)
         print("Скачиваем картинку...")
@@ -119,7 +120,13 @@ if __name__ == "__main__":
         post_text = safe_html(clean); print(f"Body length: {len(post_text)}"); post_text = post_text + cta_footer()
 
         print("Отправляем в Telegram...")
-        if image_bytes and send_with_photo(post_text, image_bytes):
+        if len(post_text) > 1024:
+            print("Long caption: photo + text separately")
+            teaser = clean[:150].rsplit(" ", 1)[0] + "..."
+            if image_bytes:
+                send_with_photo(teaser, image_bytes)
+            send_message(post_text)
+        elif image_bytes and send_with_photo(post_text, image_bytes):
             pass
         else:
             send_message(post_text)
@@ -143,7 +150,7 @@ if __name__ == "__main__":
             max_post(MAX_CHAT_ID, vk_text, image_url)
         print("Post published!")
 
-    if now.hour == 10 or manual:
+    if POST_TYPE in ("longread", "both"):
         print("Готовим лонгрид для Дзена...")
         try:
             from generator import generate_dzen_article

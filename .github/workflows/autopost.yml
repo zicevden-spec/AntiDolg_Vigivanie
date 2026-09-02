@@ -2,6 +2,13 @@ name: Auto-post to Telegram
 
 on:
   workflow_dispatch:
+    inputs:
+      post_type:
+        description: "short или longread"
+        required: true
+        default: "short"
+        type: string
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -33,5 +40,6 @@ jobs:
           VK_USER_TOKEN: ${{ secrets.VK_USER_TOKEN }}
           MAX_SESSION_B64: ${{ secrets.MAX_SESSION_B64 }}
           MAX_CHAT_ID: ${{ secrets.MAX_CHAT_ID }}
+          POST_TYPE: ${{ github.event.inputs.post_type }}
           TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
         run: python main.py
