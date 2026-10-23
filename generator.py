@@ -188,15 +188,29 @@ def fetch_news():
 def clean_thinking(text):
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
+CTA_LABELS = ["Избавиться от долгов", "Пройти опрос", "Хочу стать агентом"]
+
+def is_cta_line(s):
+    """CTA-строка: содержит ссылку-маркер ИЛИ только метку призыва (без полезного текста)."""
+    if any(link in s for link in (DEBT_LINK, AFFILIATE_LINK, AGENT_LINK)):
+        return True
+    for label in CTA_LABELS:
+        if label in s:
+            # Оставляем строки, где помимо метки есть настоящий текст (например "Пройти опрос можно за 2 минуты")
+            rest = re.sub(re.escape(label), "", s)
+            rest = re.sub(r"https?://\S+", "", rest)
+            rest = re.sub(r"[\W\d_]+", "", rest, flags=re.UNICODE)
+            if len(rest) < 10:
+                return True
+    return False
+
 def normalize_links(text, max_len=None):
-    bad_markers = [DEBT_LINK, AFFILIATE_LINK, AGENT_LINK,
-                   "Избавиться от долгов", "Пройти опрос", "Хочу стать агентом"]
     clean_lines = []
     for line in text.split("\n"):
         s = line.strip()
         if not s:
             continue
-        if any(m in s for m in bad_markers):
+        if is_cta_line(s):
             continue
         if "http" in s and ("[" in s or "(" in s or "xn--" in s):
             continue
@@ -229,6 +243,50 @@ def ensure_links(text):
         print(f"Model forgot links, adding: {len(missing)}")
         text = text.rstrip() + "\n" + "\n".join(missing)
     return text
+
+
+MIN_BODY_LEN = 150
+
+def body_length(text):
+    """Длина осмысленного тела поста (без CTA-строк и чистых эмодзи-строк)."""
+    total = 0
+    for line in text.split("\n"):
+        s = line.strip()
+        if not s or is_cta_line(s):
+            continue
+        if re.match(r"^[\W_]+$", s, flags=re.UNICODE):
+            continue
+        total += len(s)
+    return total
+
+
+FALLBACK_TEMPLATES = [
+    (
+        "⚖️ Банкротство физлиц — это законный способ начать с чистого листа\n\n"
+        "Государство прописало понятную процедуру: если платить по кредитам и займам реально нечем, "
+        "долги можно списать через суд или МФЦ. Процедура занимает несколько месяцев, а все звонки "
+        "коллекторов после её запуска прекращаются по закону.\n\n"
+        "📌 Главное: банкротство — не клеймо, а инструмент, которым пользуются тысячи людей по всей стране."
+    ),
+    (
+        "💡 Если долги давят — выход есть, и он легальный\n\n"
+        "Многие годами боятся слова «банкротство», хотя по закону это обычная процедура освобождения от долгов. "
+        "Единственное жильё, как правило, остаётся у вас, а приставы после введения процедуры больше не могут "
+        "арестовывать счета и удерживать половину зарплаты.\n\n"
+        "✅ Первый шаг — просто оценить ситуацию: ответить на несколько вопросов и узнать, подходит ли вам процедура."
+    ),
+    (
+        "🧑‍⚖️ Долги — не приговор\n\n"
+        "Если сумма долгов превысила ваши возможности, закон 127-ФЗ даёт право на банкротство. "
+        "Это не криминал и не «чёрная метка»: после процедуры вы официально освобождаетесь от большинства обязательств "
+        "и можете выдохнуть — без коллекторов, штрафов и бесконечных переплат.\n\n"
+        "⚖️ Чтобы понять, ваш ли это случай, достаточно короткой консультации и пары простых шагов."
+    ),
+]
+
+
+def fallback_post():
+    return random.choice(FALLBACK_TEMPLATES)
 
 
 def generate_image_url(topic, history):
@@ -273,19 +331,21 @@ def generate_post(history):
         "Без паники и запугивания.\n"
         f"Задача: {TYPE_INSTRUCTIONS[content_type]} на тему: {topic}. "
         f"{news_block}"
-        "Пост до 900 знаков. Правила:\n"
+        "Пост: не меньше 600 и до 900 знаков (без строк со ссылками). Правила:\n"
         "1. Простыми словами, эмодзи для структуры.\n"
         "2. НЕ используй символы # и *.\n"
-        "3. В конце добавь РОВНО 3 строки:\n"
+        "3. Основная часть должна быть полноценной: минимум 4-6 абзацев с конкретной пользой — факты, примеры, советы. "
+        "ЗАПРЕЩЕНО ограничиваться одной вводной фразой вроде «сегодня поговорим о...».\n"
+        "4. В конце добавь РОВНО 3 строки:\n"
         f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
         f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
         f"🤝 [Хочу стать агентом]({AGENT_LINK})\n"
     )
     if news:
-        prompt += f"4. После трёх строк добавь ещё одну: 📰 Источник: [{news['source']}]({news['link']})\n"
+        prompt += f"5. После трёх строк добавь ещё одну: 📰 Источник: [{news['source']}]({news['link']})\n"
     else:
-        prompt += "4. После трёх строк НИЧЕГО не добавляй, источника быть не должно.\n"
-    prompt += "5. НЕ показывай рассуждения, только финальный пост.\n"
+        prompt += "5. После трёх строк НИЧЕГО не добавляй, источника быть не должно.\n"
+    prompt += "6. НЕ показывай рассуждения, только финальный пост.\n"
 
     for model in WORKING_MODELS:
         try:
@@ -296,18 +356,17 @@ def generate_post(history):
                 max_tokens=1000,
             )
             text = normalize_links(clean_thinking(response.choices[0].message.content))
+            blen = body_length(text)
+            if blen < MIN_BODY_LEN:
+                print(f"Model {model} returned too short body ({blen} chars), trying next model")
+                continue
             print(f"Groq answer ({model}): {text[:80]}...")
             return text, topic, content_type
         except Exception as e:
             print(f"Model {model} failed: {e}")
 
-    fallback = (
-        "💡 Важная информация о долгах\n\n"
-        "Законодательство в сфере банкротства постоянно обновляется, защищая права должников.\n\n"
-        f"💸 [Избавиться от долгов]({DEBT_LINK})\n"
-        f"👉 [Пройти опрос]({AFFILIATE_LINK})\n"
-        f"🤝 [Хочу стать агентом]({AGENT_LINK})"
-    )
+    fallback = fallback_post()
+    print("All models failed or returned empty body, using fallback template")
     return fallback, topic, content_type
 def ensure_dzen_links(text):
     pairs = [
